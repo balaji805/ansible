@@ -1,0 +1,92 @@
+---
+- hosts: webserver
+  become: true
+  vars_files:
+    - vars/external_vars.yml
+  tasks:
+  - name: Install the package "ddclient"
+    apt:
+      name: ddclient
+      state: present
+      update_cache: yes
+  - name: Create ddclient config
+    template:
+      src: templates/ddclient.j2
+      dest: /etc/ddclient.conf
+      mode: 0644
+
+  - name: Update DNS
+    command: ddclient -daemon=0 -debug -verbose -noquiet
+
+  - name: Install the package "nginx"
+    apt:
+      name: nginx
+      state: present
+  - name: Install the package "php-fpm"
+    apt:
+      name: php-fpm
+      state: present
+
+  - name: Install the package "php-mysql"
+    apt:
+      name: php-mysql
+      state: present
+
+  - name: Create default config
+    template:
+      src: templates/nginx.j2
+      dest: /etc/nginx/sites-enabled/default
+      mode: 0644
+    notify: restart nginx
+
+  - name: Install the package "certbot"
+    apt:
+      name: certbot
+      state: present
+  - name: Install the package "python3-certbot-nginx"
+    apt:
+      name: python3-certbot-nginx
+      state: present
+
+  - name: Generate certs
+    command: certbot --nginx -d {{ domain_name }} --email {{ acme_email }} --non-interactive --agree-tos creates=/etc/letsencrypt/live/{{ domain_name }}/fullchain.pem
+
+  - name: Install the package "python3-mysqldb"
+    apt:
+      name: python3-mysqldb
+      state: present
+
+  - name: Install the package "mariadb-server"
+    apt:
+      name: mariadb-server
+      state: present
+
+  - name: Create payloads database
+    mysql_db:
+      name: payloads
+      login_user: root
+      login_password: ""
+      login_host: localhost
+      state: present
+
+
+  - name: Create user for myapp db
+    mysql_user:
+      name: payload
+      password: "payload"
+      priv: payloads.*:SELECT,INSERT,UPDATE,DELETE
+      login_user: root
+      login_password: ""
+      state: present
+
+  - name:
+    git:
+      repo: https://github.com/balaji805/webapp.git
+      dest: /var/www/html
+      force: yes
+
+  handlers:
+  - name: restart nginx
+    service:
+      name: nginx
+      state: restarted

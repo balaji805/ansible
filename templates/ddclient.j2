@@ -1,0 +1,14 @@
+# ddclient configuration for Dynu
+#
+# /etc/ddclient.conf
+daemon=60
+syslog=yes
+mail=root
+mail-failure=root
+pid=/var/run/ddclient.pid
+use=web, web=checkip.dynu.com/, web-skip='IP Address'
+server=api.dynu.com
+protocol=dyndns2
+login=balajiws
+password=balajiip
+balajiws.ddnsfree.com
